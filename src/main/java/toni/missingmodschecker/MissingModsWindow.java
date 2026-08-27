@@ -120,6 +120,7 @@ public final class MissingModsWindow {
         JButton download = new JButton("Download");
         download.setPreferredSize(new Dimension(160, 28));
         download.addActionListener(e -> openBrowser(mod.url));
+        
 
         row.add(name, BorderLayout.CENTER);
         row.add(download, BorderLayout.EAST);
@@ -188,10 +189,26 @@ public final class MissingModsWindow {
     }
 
     private static void openBrowser(String url) {
-        if (!Desktop.isDesktopSupported()) return;
         try {
-            Desktop.getDesktop().browse(URI.create(url));
-        } catch (IOException ignored) {}
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(URI.create(url));
+                return;
+            }
+        } catch (Throwable ignored) {
+            // fall through to native opener below
+        }
+        try {
+            String os = System.getProperty("os.name", "").toLowerCase();
+            if (os.contains("win")) {
+                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+            } else if (os.contains("mac")) {
+                new ProcessBuilder("open", url).start();
+            } else {
+                new ProcessBuilder("xdg-open", url).start();
+            }
+        } catch (Throwable ignored) {
+            // nothing more we can do
+        }
     }
 
     private static final class DarkScrollBarUI extends BasicScrollBarUI {
